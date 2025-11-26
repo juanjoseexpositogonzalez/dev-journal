@@ -2,6 +2,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Iterable, List
 
 DB_FILE = Path("journal.json")
 DB_FILE.touch(exist_ok=True)
@@ -12,10 +13,15 @@ DB_FILE.touch(exist_ok=True)
 class JournalEntry:
     title: str
     content: str
-    date: datetime  # ISO format date string
+    date: datetime
+
+    @property
+    def summary(self) -> str:
+        """Return a formatted string representation of the journal entry."""
+        return f"📅 {datetime.fromisoformat(self.date).strftime('%a %d %b %Y, %I:%M%p')}\n📝 {self.title}\n{self.content}\n{'-'*40}"
 
 
-def load_entries():
+def load_entries() -> List[JournalEntry]:
     """Load journal entries from the JSON file."""
     with DB_FILE.open("r", encoding="utf-8") as f:
         try:
@@ -25,15 +31,15 @@ def load_entries():
             return []
 
 
-def save_entries(entries):
+def save_entries(entries: Iterable[JournalEntry]) -> None:
     """Save journal entries to the JSON file."""
     for entry in entries:
-        entry.date = entry.date.isoformat()  # Convert datetime to ISO string
+        entry.date = entry.date.isoformat()
     with DB_FILE.open("w", encoding="utf-8") as f:
         json.dump([asdict(entry) for entry in entries], f, indent=4)
 
 
-def add_entry(title, content):
+def add_entry(title: str, content: str) -> None:
     """Create a new journal entry and save it to the JSON file."""
     journal_entry = JournalEntry(
         title=title, content=content, date=datetime.now().isoformat()
@@ -48,12 +54,10 @@ def add_entry(title, content):
         json.dump(data, f, indent=4)
 
 
-def list_entries(entries):
+def list_entries(entries: Iterable[JournalEntry]) -> None:
     """Print all journal entries to the console."""
     for entry in entries:
-        print(
-            f"📅 {datetime.fromisoformat(entry.date).strftime('%a %d %b %Y, %I:%M%p')}\n📝 {entry.title}\n{entry.content}\n{'-'*40}"
-        )
+        print(entry.summary)
 
 
 if __name__ == "__main__":
