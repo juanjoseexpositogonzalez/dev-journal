@@ -33,25 +33,18 @@ def load_entries() -> List[JournalEntry]:
 
 def save_entries(entries: Iterable[JournalEntry]) -> None:
     """Save journal entries to the JSON file."""
-    for entry in entries:
-        entry.date = entry.date.isoformat()
     with DB_FILE.open("w", encoding="utf-8") as f:
         json.dump([asdict(entry) for entry in entries], f, indent=4)
 
 
 def add_entry(title: str, content: str) -> None:
     """Create a new journal entry and save it to the JSON file."""
+    entries = load_entries()
     journal_entry = JournalEntry(
         title=title, content=content, date=datetime.now().isoformat()
     )
-    with DB_FILE.open("r+", encoding="utf-8") as f:
-        try:
-            data = json.load(f)
-        except json.JSONDecodeError:
-            data = []
-        data.append(asdict(journal_entry))
-        f.seek(0)
-        json.dump(data, f, indent=4)
+    entries.append(journal_entry)
+    save_entries(entries)
 
 
 def list_entries(entries: Iterable[JournalEntry]) -> None:
