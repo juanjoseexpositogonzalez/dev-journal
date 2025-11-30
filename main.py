@@ -2,7 +2,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Final, List, Sized
+from typing import Final, Sized
 
 import typer
 from typing_extensions import Annotated
@@ -21,7 +21,7 @@ app = typer.Typer()
 class JournalEntry:
     title: str
     content: str
-    tags: str
+    tags: str | None
     date: datetime
 
     def __post_init__(self):
@@ -56,7 +56,7 @@ def save_entries(entries: Sized[JournalEntry]) -> None:
         json.dump([asdict(entry) for entry in entries], f, indent=4)
 
 
-def add_entry(title: str, content: str, tags: str = "") -> None:
+def add_entry(title: str, content: str, tags: str | None = "") -> None:
     """Create a new journal entry and save it to the JSON file."""
     entries = load_entries()
     journal_entry = JournalEntry(
@@ -77,7 +77,9 @@ def list_entries(entries: Sized[JournalEntry]) -> None:
 def add(
     title: Annotated[str, typer.Argument(..., help="Title of the journal entry")],
     content: Annotated[str, typer.Argument(..., help="Content of the journal entry")],
-    tags: Annotated[List[str], typer.Option(help="Tags (comma separated)")] = None,
+    tags: Annotated[
+        str | None, typer.Option("--tags", help="Tags (comma separated)")
+    ] = "",
 ) -> None:
     """Add a new journal entry."""
     try:
