@@ -57,14 +57,15 @@ def save_entries(entries: List[JournalEntry]) -> None:
         json.dump([asdict(entry) for entry in entries], f, indent=4)
 
 
-def add_entry(title: str, content: str, tags: str | None = "") -> None:
+def add_entry(title: str, content: str, tags: List[str] | None = None) -> None:
     """Create a new journal entry and save it to the JSON file."""
     entries = load_entries()
+    tags = [tag.strip() for tag in tags] if tags else []  # type: ignore
     journal_entry = JournalEntry(
         title=title,
         content=content,
         date=datetime.now().isoformat(),
-        tags=tags.split(",") if tags else [],
+        tags=tags,
     )
     entries.append(journal_entry)
     save_entries(entries)
@@ -77,13 +78,36 @@ def list_entries(entries: List[JournalEntry]) -> None:
     print(f"{'-'*DASH_LENGTH}\nTotal entries: {len(entries)}")
 
 
+def search_entries(entries: List[JournalEntry], query: str, tags: bool = False) -> None:
+    """Search for journal entries by title or content."""
+    found_entries = [entry for entry in entries if query.lower() in entry.title.lower()]  # type: ignore
+    if found_entries:
+        typer.echo(f"\n{'='*DASH_LENGTH}")
+        typer.echo(f"🔍 Found entries with title '{query}'")
+        for entry in found_entries:
+            typer.echo(entry.summary)
+        typer.echo(f"{'='*DASH_LENGTH}")
+    else:
+        typer.echo("❌ No journal entries found with title '{query}'")
+    if tags:
+        found_entries = [entry for entry in entries if query.lower() in entry.tags]  # type: ignore
+        if found_entries:
+            typer.echo(f"\n{'='*DASH_LENGTH}")
+            typer.echo(f"🔍 Found entries with tag '{query}'")
+            for entry in found_entries:
+                typer.echo(entry.summary)
+            typer.echo(f"{'='*DASH_LENGTH}")
+        else:
+            typer.echo("❌ No journal entries found with tag '{query}'")
+
+
 @app.command()
 def add(
     title: Annotated[str, typer.Argument(..., help="Title of the journal entry")],
     content: Annotated[str, typer.Argument(..., help="Content of the journal entry")],
     tags: Annotated[
-        str | None, typer.Option("--tags", help="Tags (comma separated)")
-    ] = "",
+        List[str] | None, typer.Option("--tags", help="Tags (comma separated)")
+    ] = [],
 ) -> None:
     """Add a new journal entry."""
     try:
@@ -109,11 +133,24 @@ def populate() -> None:
 
     for title, content, tags in zip(TITLES, CONTENTS, TAGS, strict=True):
         try:
-            add(title, content, tags)
+            add(title, content, tags.split(",") if tags else [])
         except ValueError as e:
             typer.echo(f"❌ Failed to add journal entry '{title}'. Reason: {e}")
         else:
             typer.echo(f"🔥 Journal entry '{title}' saved.")
+
+
+@app.command()
+def search(
+    query: Annotated[str, typer.Argument(..., help="Search query")],
+    tags: Annotated[bool, typer.Option("--tags", help="Search in tags")] = False,
+) -> None:
+    """Search for journal entries by title or content."""
+    entries = load_entries()
+    if not entries:
+        typer.echo("❌ No journal entries found.")
+        return
+    search_entries(entries, query, tags=tags)
 
 
 if __name__ == "__main__":
