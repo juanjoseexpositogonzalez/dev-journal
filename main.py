@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -197,6 +198,29 @@ def search(
         typer.echo("❌ No journal entries found.")
         return
     search_entries(entries, query, tags=tags)
+
+
+@app.command()
+def stats() -> None:
+    """Show statistics about the journal."""
+    entries = load_entries()
+    if not entries:
+        typer.echo("❌ No journal entries found.")
+        return
+    typer.echo(f"Total entries: {len(entries)}")
+    typer.echo(
+        f"Total tags: {len(set([tag for entry in entries for tag in entry.tags]))}"
+    )
+    typer.echo(f"Most common tag: {most_common_tag(entries)}")
+    typer.echo(f"Total words: {sum([len(entry.content.split()) for entry in entries])}")
+    typer.echo(
+        f"Average words per entry: {sum([len(entry.content.split()) for entry in entries]) / len(entries)}"
+    )
+
+
+def most_common_tag(entries: List[JournalEntry]) -> str:
+    """Return the most common tag in the journal."""
+    return Counter(tag for entry in entries for tag in entry.tags).most_common(1)[0][0]
 
 
 if __name__ == "__main__":
