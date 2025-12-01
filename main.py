@@ -78,27 +78,54 @@ def list_entries(entries: List[JournalEntry]) -> None:
     print(f"{'-'*DASH_LENGTH}\nTotal entries: {len(entries)}")
 
 
+def search_entries_by_tags(
+    entries: List[JournalEntry], tags: List[str]
+) -> List[JournalEntry]:
+    """Filter entries that contain all specified tags."""
+    if not tags:
+        return entries
+
+    # Normalizar tags a minúsculas para comparación case-insensitive
+    tags_lower = [tag.lower().strip() for tag in tags]
+
+    # Filtrar entradas que contengan TODOS los tags especificados
+    filtered: List[JournalEntry] = []
+    for entry in entries:
+        entry_tags_lower = [t.lower() for t in entry.tags]
+        if any(tag in entry_tags_lower for tag in tags_lower):
+            filtered.append(entry)  # type: ignore
+
+    return filtered
+
+
 def search_entries(entries: List[JournalEntry], query: str, tags: bool = False) -> None:
     """Search for journal entries by title or content."""
-    found_entries = [entry for entry in entries if query.lower() in entry.title.lower()]  # type: ignore
-    if found_entries:
-        typer.echo(f"\n{'='*DASH_LENGTH}")
-        typer.echo(f"🔍 Found entries with title '{query}'")
-        for entry in found_entries:
-            typer.echo(entry.summary)
-        typer.echo(f"{'='*DASH_LENGTH}")
-    else:
-        typer.echo("❌ No journal entries found with title '{query}'")
     if tags:
-        found_entries = [entry for entry in entries if query.lower() in entry.tags]  # type: ignore
+        # Buscar por tags
+        found_entries = [
+            entry
+            for entry in entries
+            if query.lower() in [t.lower() for t in entry.tags]
+        ]
         if found_entries:
             typer.echo(f"\n{'='*DASH_LENGTH}")
             typer.echo(f"🔍 Found entries with tag '{query}'")
-            for entry in found_entries:
-                typer.echo(entry.summary)
+            list_entries(found_entries)
             typer.echo(f"{'='*DASH_LENGTH}")
         else:
-            typer.echo("❌ No journal entries found with tag '{query}'")
+            typer.echo(f"❌ No journal entries found with tag '{query}'")
+    else:
+        # Buscar por título
+        found_entries = [
+            entry for entry in entries if query.lower() in entry.title.lower()
+        ]
+        if found_entries:
+            typer.echo(f"\n{'='*DASH_LENGTH}")
+            typer.echo(f"🔍 Found entries with title '{query}'")
+            list_entries(found_entries)
+            typer.echo(f"{'='*DASH_LENGTH}")
+        else:
+            typer.echo(f"❌ No journal entries found with title '{query}'")
 
 
 @app.command()
@@ -117,13 +144,32 @@ def add(
 
 
 @app.command()
-def list() -> None:
-    """List all journal entries."""
+def list(
+    tag: Annotated[
+        List[str] | None,
+        typer.Option(
+            "--tag", help="Filter entries by tags (can be used multiple times)"
+        ),
+    ] = None,
+) -> None:
+    """List all journal entries, optionally filtered by tags."""
     entries = load_entries()
     if not entries:
         typer.echo("❌ No journal entries found.")
         return
-    list_entries(entries)
+
+    if tag:
+        # Filtrar por múltiples tags (AND logic: todas las entradas deben tener todos los tags)
+        filtered_entries = search_entries_by_tags(entries, tag)
+        if filtered_entries:
+            typer.echo(
+                f"🔍 Found {len(filtered_entries)} entries with tags: {', '.join(tag)}"
+            )
+            list_entries(filtered_entries)
+        else:
+            typer.echo(f"❌ No journal entries found with tags: {', '.join(tag)}")
+    else:
+        list_entries(entries)
 
 
 @app.command()
