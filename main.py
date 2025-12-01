@@ -1,15 +1,15 @@
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Final, Sized
+from typing import Final, List
 
 import typer
 from typing_extensions import Annotated
 
 DB_FILE = Path("journal.json")
 DB_FILE.touch(exist_ok=True)
-DASH_LENTGH: Final[int] = 80
+DASH_LENGTH: Final[int] = 80
 MAX_TITLE_LENGHT: Final[int] = 50
 MAX_CONTENT_LENGHT: Final[int] = 200
 
@@ -21,8 +21,8 @@ app = typer.Typer()
 class JournalEntry:
     title: str
     content: str
-    tags: str | None
     date: datetime
+    tags: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         if len(self.title) > MAX_TITLE_LENGHT:
@@ -36,21 +36,22 @@ class JournalEntry:
         date = self.date
         title = self.title.upper()
         content = self.content
-        tags = self.tags if self.tags != "" else "No tags"
-        return f"{'-'*DASH_LENTGH}\n📝 {title}. -- 📅 {date}\nTags: {tags}\n{'-'*DASH_LENTGH}\n{content}"
+        tags = ", ".join(self.tags) if self.tags else "No tags"
+        return f"{'-'*DASH_LENGTH}\n📝 {title}. -- 📅 {date}\nTags: {tags}\n{'-'*DASH_LENGTH}\n{content}"
 
 
-def load_entries() -> Sized[JournalEntry]:
+def load_entries() -> List[JournalEntry]:
     """Load journal entries from the JSON file."""
+    entries: List[JournalEntry] = []
     with DB_FILE.open("r", encoding="utf-8") as f:
         try:
             data = json.load(f)
             return [JournalEntry(**entry) for entry in data]
         except json.JSONDecodeError:
-            return []
+            return entries
 
 
-def save_entries(entries: Sized[JournalEntry]) -> None:
+def save_entries(entries: List[JournalEntry]) -> None:
     """Save journal entries to the JSON file."""
     with DB_FILE.open("w", encoding="utf-8") as f:
         json.dump([asdict(entry) for entry in entries], f, indent=4)
@@ -60,17 +61,20 @@ def add_entry(title: str, content: str, tags: str | None = "") -> None:
     """Create a new journal entry and save it to the JSON file."""
     entries = load_entries()
     journal_entry = JournalEntry(
-        title=title, content=content, date=datetime.now().isoformat(), tags=tags
+        title=title,
+        content=content,
+        date=datetime.now(),
+        tags=tags.split(",") if tags else [],
     )
     entries.append(journal_entry)
     save_entries(entries)
 
 
-def list_entries(entries: Sized[JournalEntry]) -> None:
+def list_entries(entries: List[JournalEntry]) -> None:
     """Print all journal entries to the console."""
     for entry in entries:
         print(entry.summary)
-    print(f"{'-'*DASH_LENTGH}\nTotal entries: {len(entries)}")
+    print(f"{'-'*DASH_LENGTH}\nTotal entries: {len(entries)}")
 
 
 @app.command()
