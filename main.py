@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Final, List
+from uuid import uuid4
 
 import typer
 from typing_extensions import Annotated
@@ -20,9 +21,10 @@ app = typer.Typer()
 # 📝 Define a JournalEntry class with title, content, and date
 @dataclass
 class JournalEntry:
-    title: str
-    content: str
-    date: str
+    id: str = field(default_factory=lambda: str(uuid4()))
+    title: str = field(default="")
+    content: str = field(default="")
+    date: str = field(default=datetime.now().isoformat())
     tags: List[str] = field(default_factory=list)
 
     def __post_init__(self):
@@ -58,11 +60,24 @@ def save_entries(entries: List[JournalEntry]) -> None:
         json.dump([asdict(entry) for entry in entries], f, indent=4)
 
 
+def get_existing_ids(entries: List[JournalEntry]) -> List[str]:
+    """Get all existing IDs from the journal entries."""
+    return [entry.id for entry in entries]
+
+
 def add_entry(title: str, content: str, tags: List[str] | None = None) -> None:
     """Create a new journal entry and save it to the JSON file."""
     entries = load_entries()
+    existing_ids = get_existing_ids(entries)
+    if existing_ids:
+        new_id = str(uuid4())
+        while new_id in existing_ids:
+            new_id = str(uuid4())
+    else:
+        new_id = str(uuid4())
     tags = [tag.strip() for tag in tags] if tags else []  # type: ignore
     journal_entry = JournalEntry(
+        id=new_id,
         title=title,
         content=content,
         date=datetime.now().isoformat(),
