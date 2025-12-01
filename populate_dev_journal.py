@@ -18,7 +18,8 @@ CONTENTS: Final[list[str]] = [
 
 TAGS: Final[list[str]] = [
     "setup, tools",
-    "fastapi, backend" "testing, pytest",
+    "fastapi, backend",
+    "testing, pytest",
     "uv, packaging",
     "git, productivity",
 ]

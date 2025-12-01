@@ -73,7 +73,6 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "pydantic" },
-    { name = "ruff" },
     { name = "typer" },
 ]
 
@@ -86,7 +85,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = ">=2.12.4" },
-    { name = "ruff", specifier = ">=0.14.6" },
     { name = "typer", specifier = ">=0.20.0" },
 ]
 
