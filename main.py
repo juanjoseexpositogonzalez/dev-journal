@@ -131,7 +131,7 @@ def populate() -> None:
     """Populate the journal with predefined entries."""
     from populate_dev_journal import CONTENTS, TAGS, TITLES
 
-    for title, content, tags in zip(TITLES, CONTENTS, TAGS, strict=True):
+    for title, content, tags in zip(TITLES, CONTENTS, TAGS, strict=True):  # type: ignore
         try:
             add(title, content, tags.split(",") if tags else [])
         except ValueError as e:
