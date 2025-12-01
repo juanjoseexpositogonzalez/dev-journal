@@ -21,7 +21,7 @@ app = typer.Typer()
 class JournalEntry:
     title: str
     content: str
-    date: datetime
+    date: str
     tags: List[str] = field(default_factory=list)
 
     def __post_init__(self):
@@ -63,7 +63,7 @@ def add_entry(title: str, content: str, tags: str | None = "") -> None:
     journal_entry = JournalEntry(
         title=title,
         content=content,
-        date=datetime.now(),
+        date=datetime.now().isoformat(),
         tags=tags.split(",") if tags else [],
     )
     entries.append(journal_entry)
@@ -90,8 +90,6 @@ def add(
         add_entry(title, content, tags)
     except ValueError as e:
         typer.echo(f"❌ Failed to add journal entry. Reason: {e}")
-    else:
-        typer.echo("🔥 Journal entry saved.")
 
 
 @app.command()
@@ -109,9 +107,9 @@ def populate() -> None:
     """Populate the journal with predefined entries."""
     from populate_dev_journal import CONTENTS, TAGS, TITLES
 
-    for title, content, tags in zip(TITLES, CONTENTS, TAGS):
+    for title, content, tags in zip(TITLES, CONTENTS, TAGS, strict=True):
         try:
-            add_entry(title, content, tags)
+            add(title, content, tags)
         except ValueError as e:
             typer.echo(f"❌ Failed to add journal entry '{title}'. Reason: {e}")
         else:
