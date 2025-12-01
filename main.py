@@ -2,6 +2,7 @@ import json
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from difflib import get_close_matches
 from pathlib import Path
 from typing import Final, List
 from uuid import uuid4
@@ -14,6 +15,12 @@ DB_FILE.touch(exist_ok=True)
 DASH_LENGTH: Final[int] = 80
 MAX_TITLE_LENGHT: Final[int] = 50
 MAX_CONTENT_LENGHT: Final[int] = 200
+CLOSE_MATCH_CUTOFF: Final[float] = 0.5
+CLOSE_MATCH_MAX_RESULTS: Final[int] = 10
+
+LINE_SEPARATOR: Final[str] = "-" * DASH_LENGTH
+LINE_SEPARATOR_DOUBLE: Final[str] = "=" * DASH_LENGTH
+
 
 app = typer.Typer()
 
@@ -124,24 +131,46 @@ def search_entries(entries: List[JournalEntry], query: str, tags: bool = False) 
             if query.lower() in [t.lower() for t in entry.tags]
         ]
         if found_entries:
-            typer.echo(f"\n{'='*DASH_LENGTH}")
+            typer.echo(f"\n{LINE_SEPARATOR_DOUBLE}")
             typer.echo(f"🔍 Found entries with tag '{query}'")
             list_entries(found_entries)
-            typer.echo(f"{'='*DASH_LENGTH}")
+            typer.echo(f"{LINE_SEPARATOR_DOUBLE}")
         else:
             typer.echo(f"❌ No journal entries found with tag '{query}'")
     else:
         # Buscar por título
-        found_entries = [
-            entry for entry in entries if query.lower() in entry.title.lower()
-        ]
+        # found_entries = [
+        #     entry for entry in entries if query.lower() in entry.title.lower()
+        # ]
+        found_entries = get_close_matches(
+            query,
+            [entry.title for entry in entries],
+            n=CLOSE_MATCH_MAX_RESULTS,
+            cutoff=CLOSE_MATCH_CUTOFF,
+        )
         if found_entries:
-            typer.echo(f"\n{'='*DASH_LENGTH}")
-            typer.echo(f"🔍 Found entries with title '{query}'")
-            list_entries(found_entries)
-            typer.echo(f"{'='*DASH_LENGTH}")
+            typer.echo(f"\n{LINE_SEPARATOR_DOUBLE}")
+            typer.echo(
+                f"🔍 Found entries with title '{query}': {', '.join(found_entries)}"
+            )
+            typer.echo(f"{LINE_SEPARATOR_DOUBLE}")
         else:
             typer.echo(f"❌ No journal entries found with title '{query}'")
+
+
+def most_common_tag(entries: List[JournalEntry]) -> str:
+    """Return the most common tag in the journal."""
+    return Counter(tag for entry in entries for tag in entry.tags).most_common(1)[0][0]
+
+
+def delete_entry(id: str) -> None:
+    """Delete a journal entry by ID."""
+    entries = load_entries()
+    existing_ids = get_existing_ids(entries)
+    if id not in existing_ids:
+        raise ValueError(f"Entry with ID '{id}' not found.")
+    entries = [entry for entry in entries if entry.id != id]
+    save_entries(entries)
 
 
 @app.command()
@@ -233,9 +262,17 @@ def stats() -> None:
     )
 
 
-def most_common_tag(entries: List[JournalEntry]) -> str:
-    """Return the most common tag in the journal."""
-    return Counter(tag for entry in entries for tag in entry.tags).most_common(1)[0][0]
+@app.command()
+def delete(
+    id: Annotated[str, typer.Argument(..., help="ID of the journal entry to delete")],
+) -> None:
+    """Delete a journal entry by ID."""
+    try:
+        delete_entry(id)
+    except ValueError as e:
+        typer.echo(f"❌ Failed to delete journal entry. Reason: {e}")
+    else:
+        typer.echo(f"🔥 Journal entry '{id}' deleted.")
 
 
 if __name__ == "__main__":
